@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydrological Processes <title>CLD Walkthrough</title> the Soil Carbon Sponge — CLD Walkthrough</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js" crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html {
+            font-family: 'Inter', sans-serif;
+            height: 100%;
+            overflow: hidden;
+            background: #0F172A;
+            color: #F1F5F9;
+        }
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* ── Header ── */
+        #slide-header {
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            height: 66px;
+            background: #1E293B;
+            border-bottom: 1px solid #334155;
+            flex-shrink: 0;
+            gap: 14px;
+        }
+        #slide-badge {
+            padding: 4px 11px;
+            border-radius: 20px;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            white-space: nowrap;
+            flex-shrink: 0;
+            transition: background 0.3s, color 0.3s;
+        }
+        #slide-title-block { flex: 1; min-width: 0; }
+        #slide-title {
+            font-size: 19px;
+            font-weight: 700;
+            color: #F1F5F9;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #slide-subtitle {
+            font-size: 12px;
+            color: #94A3B8;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #slide-counter {
+            font-size: 12px;
+            color: #64748B;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* ── Body ── */
+        #slide-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* ── Diagram ── */
+        #slide-diagram {
+            flex: 0 0 62%;
+            position: relative;
+            background: #FFFFFF;
+        }
+        #network {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── Panel ── */
+        #slide-panel {
+            flex: 0 0 38%;
+            background: #1E293B;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-left: 1px solid #334155;
+        }
+        #panel-accent-bar {
+            height: 3px;
+            flex-shrink: 0;
+            transition: background 0.3s;
+        }
+        #panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 22px 24px 20px;
+            scroll-behavior: smooth;
+        }
+        #panel-loop-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+            transition: color 0.3s;
+        }
+        #panel-heading {
+            font-size: 17px;
+            font-weight: 700;
+            color: #F1F5F9;
+            margin-bottom: 14px;
+            line-height: 1.35;
+        }
+        #panel-description {
+            font-size: 13px;
+            color: #CBD5E1;
+            line-height: 1.8;
+        }
+        #panel-description p { margin-bottom: 11px; }
+        #panel-description p:last-child { margin-bottom: 0; }
+        #panel-description em { color: #F1F5F9; font-style: italic; }
+        #panel-description strong { color: #F1F5F9; font-weight: 600; }
+        #panel-nodes {
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid #334155;
+        }
+        #panel-nodes-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #475569;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        #panel-nodes-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .node-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 9px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #1F2937;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        /* ── Nav Footer ── */
+        #slide-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            height: 58px;
+            background: #0F172A;
+            border-top: 1px solid #1E293B;
+            flex-shrink: 0;
+        }
+        .nav-btn {
+            padding: 7px 18px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #1E293B;
+            color: #CBD5E1;
+            font-size: 13.5px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: 'Inter', sans-serif;
+        }
+        .nav-btn:hover:not(:disabled) {
+            background: #334155;
+            color: #F1F5F9;
+            border-color: #475569;
+        }
+        .nav-btn:disabled { opacity: 0.28; cursor: not-allowed; }
+        #nav-dots {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        .nav-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #334155;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .nav-dot:hover { background: #64748B; transform: scale(1.2); }
+        .nav-dot.active { transform: scale(1.35); }
+        .nav-dot.active.overview { background: #94A3B8; }
+        .nav-dot.active.r-loop   { background: #F59E0B; }
+        .nav-dot.active.b-loop   { background: #60A5FA; }
+        .nav-dot.active.archetype{ background: #A78BFA; }
+
+        #cldLink {
+            padding: 7px 18px;
+            border-radius: 6px;
+            border: 1px solid #0F766E;
+            background: #0F766E;
+            color: #fff;
+            font-size: 13.5px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            text-decoration: none;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        #cldLink:hover { background: #0D6460; border-color: #0D6460; }
+
+        /* Scrollbar */
+        #panel-content::-webkit-scrollbar { width: 5px; }
+        #panel-content::-webkit-scrollbar-track { background: transparent; }
+        #panel-content::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        #panel-content::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div id="slide-header">
+        <div id="slide-badge"></div>
+        <div id="slide-title-block">
+            <div id="slide-title"></div>
+            <div id="slide-subtitle"></div>
+        </div>
+        <div id="slide-counter"></div>
+    </div>
+    <div id="slide-body">
+        <div id="slide-diagram"><div id="network"></div></div>
+        <div id="slide-panel">
+            <div id="panel-accent-bar"></div>
+            <div id="panel-content">
+                <div id="panel-loop-label"></div>
+                <div id="panel-heading"></div>
+                <div id="panel-description"></div>
+                <div id="panel-nodes" style="display:none">
+                    <div id="panel-nodes-label">Key Nodes in This Loop</div>
+                    <div id="panel-nodes-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="slide-nav">
+        <button class="nav-btn" id="btn-prev">← Prev</button>
+        <div id="nav-dots"></div>
+        <button class="nav-btn" id="btn-next">Next →</button>
+        <a id="cldLink" href="index.html">← Interactive CLD</a>
+    </div>
+</div>
+
+<script>
+// START_SLIDESHOW_DATA
+// START_SLIDESHOW_DATA
+const nodesArray = [
+  { id:"n1",  label:"Soil Organic\nMatter",              shape:"box",    color:{background:"#CCFBF1",border:"#14B8A6"}, x:-350, y:-21 },
+  { id:"n2",  label:"Vegetation\nCover",                 shape:"box",    color:{background:"#CCFBF1",border:"#14B8A6"}, x:-197, y:-249 },
+  { id:"n3",  label:"Soil Moisture\n(θ)",                shape:"box",    color:{background:"#CCFBF1",border:"#14B8A6"}, x:-187, y:114 },
+  { id:"n4",  label:"Atmospheric /\nSurface Temperature",shape:"box",    color:{background:"#FEE2E2",border:"#EF4444"}, x:401,  y:-217 },
+  { id:"n5",  label:"Land\nDegradation",                 shape:"box",    color:{background:"#FEE2E2",border:"#EF4444"}, x:323,  y:-19 },
+  { id:"n6",  label:"Infiltration\nCapacity",            color:{background:"#DBEAFE",border:"#3B82F6"}, x:-476, y:135 },
+  { id:"n7",  label:"Root Biomass\n& Depth",             color:{background:"#DBEAFE",border:"#3B82F6"}, x:-505, y:-395 },
+  { id:"n8",  label:"Evapotrans-\npiration (ET)",        color:{background:"#DBEAFE",border:"#3B82F6"}, x:104,  y:100 },
+  { id:"n9",  label:"Latent\nHeat Flux",                 color:{background:"#DBEAFE",border:"#3B82F6"}, x:249,  y:-135 },
+  { id:"n10", label:"Biological\nPrecip. Nuclei",        color:{background:"#DBEAFE",border:"#3B82F6"}, x:17,   y:-402 },
+  { id:"n11", label:"Cloud Cover /\nCloud Albedo",       color:{background:"#DBEAFE",border:"#3B82F6"}, x:170,  y:-292 },
+  { id:"n12", label:"Regional Moisture\nConvergence",    color:{background:"#DBEAFE",border:"#3B82F6"}, x:135,  y:347 },
+  { id:"n13", label:"Precipitation\n(P)",                color:{background:"#DBEAFE",border:"#3B82F6"}, x:-202, y:270 },
+  { id:"n14", label:"Soil Surface\nTemperature",         color:{background:"#DBEAFE",border:"#3B82F6"}, x:250,  y:100 },
+  { id:"n15", label:"IR Re-radiation\n(Stefan-Boltzmann)",color:{background:"#DBEAFE",border:"#3B82F6"}, x:400,  y:150 },
+  { id:"n16", label:"Humid Haze\n(Micro-droplets)",      color:{background:"#DBEAFE",border:"#3B82F6"}, x:613,  y:-257 },
+  { id:"n17", label:"Aerosol / Dust\nLoading",           color:{background:"#DBEAFE",border:"#3B82F6"}, x:608,  y:120 },
+  { id:"n18", label:"High-Pressure\nHeat Domes",         color:{background:"#DBEAFE",border:"#3B82F6"}, x:500,  y:250 },
+  { id:"n19", label:"Blue Water\n(Streamflow)",          color:{background:"#DBEAFE",border:"#3B82F6"}, x:-350, y:255 },
+  { id:"n20", label:"Regenerative\nLand Practices",      shape:"box",    color:{background:"#D1FAE5",border:"#10B981"}, x:-702, y:29 },
+];
+
+const edgesData = [
+  { id:"e1",  from:"n1",  to:"n6",  label:"Creates pores\n+",        width:6, color:{color:"#1E40AF"} },
+  { id:"e2",  from:"n1",  to:"n3",  label:"Retains water\n+",        width:5, color:{color:"#1E40AF"} },
+  { id:"e3",  from:"n6",  to:"n3",  label:"Absorbs rain\n+",         width:6, color:{color:"#1E40AF"} },
+  { id:"e4",  from:"n6",  to:"n19", label:"Reduces runoff\n-",       width:4, color:{color:"#991B1B"} },
+  { id:"e5",  from:"n3",  to:"n2",  label:"Enables growth\n+",       width:6, color:{color:"#1E40AF"} },
+  { id:"e6",  from:"n2",  to:"n7",  label:"Builds roots\n+",         width:5, color:{color:"#1E40AF"} },
+  { id:"e7",  from:"n7",  to:"n1",  label:"Feeds microbes\n+",       width:6, color:{color:"#1E40AF"} },
+  { id:"e8",  from:"n3",  to:"n8",  label:"Supplies water\n+",       width:6, color:{color:"#1E40AF"} },
+  { id:"e9",  from:"n8",  to:"n9",  label:"Transfers heat\n+",       width:6, color:{color:"#1E40AF"} },
+  { id:"e10", from:"n9",  to:"n4",  label:"Cools surface\n-",        width:7, color:{color:"#991B1B"} },
+  { id:"e11", from:"n2",  to:"n10", label:"Emits bacteria\n+",       width:5, color:{color:"#1E40AF"} },
+  { id:"e12", from:"n10", to:"n11", label:"Forms clouds\n+",         width:6, color:{color:"#1E40AF"} },
+  { id:"e13", from:"n11", to:"n4",  label:"Reflects solar\n-",       width:7, color:{color:"#991B1B"} },
+  { id:"e14", from:"n10", to:"n16", label:"Clears hazes\n-",         width:5, color:{color:"#991B1B"} },
+  { id:"e15", from:"n2",  to:"n12", label:"Creates low pressure\n+", width:5, color:{color:"#1E40AF"} },
+  { id:"e16", from:"n12", to:"n13", label:"Delivers moisture\n+",    width:6, color:{color:"#1E40AF"} },
+  { id:"e17", from:"n13", to:"n3",  label:"Recharges sponge\n+",     width:6, color:{color:"#1E40AF"} },
+  { id:"e18", from:"n14", to:"n15", label:"Re-radiates T4\n+",       width:6, color:{color:"#1E40AF"} },
+  { id:"e19", from:"n15", to:"n4",  label:"Drives greenhouse\n+",    width:6, color:{color:"#1E40AF"} },
+  { id:"e20", from:"n2",  to:"n14", label:"Insulates soil\n-",       width:5, color:{color:"#991B1B"} },
+  { id:"e21", from:"n5",  to:"n2",  label:"Removes cover\n-",        width:6, color:{color:"#991B1B"} },
+  { id:"e22", from:"n5",  to:"n1",  label:"Oxidises carbon\n-",      width:5, color:{color:"#991B1B"} },
+  { id:"e23", from:"n5",  to:"n17", label:"Emits dust\n+",           width:5, color:{color:"#1E40AF"} },
+  { id:"e24", from:"n17", to:"n16", label:"Seeds hazes\n+",          width:5, color:{color:"#1E40AF"} },
+  { id:"e25", from:"n16", to:"n4",  label:"Warms atmosphere\n+",     width:6, color:{color:"#1E40AF"} },
+  { id:"e26", from:"n4",  to:"n5",  label:"Dries & burns\n+",        width:5, color:{color:"#1E40AF"} },
+  { id:"e27", from:"n4",  to:"n18", label:"Creates domes\n+",        width:4, color:{color:"#1E40AF"} },
+  { id:"e28", from:"n18", to:"n12", label:"Blocks inflow\n-",        width:5, color:{color:"#991B1B"} },
+  { id:"e29", from:"n18", to:"n13", label:"Suppresses rain\n-",      width:5, color:{color:"#991B1B"} },
+  { id:"e30", from:"n20", to:"n1",  label:"Builds SOM\n+",           width:6, color:{color:"#1E40AF"} },
+  { id:"e31", from:"n20", to:"n2",  label:"Restores cover\n+",       width:6, color:{color:"#1E40AF"} },
+  { id:"e32", from:"n8",  to:"n3",  label:"Depletes store\n-",       width:4, color:{color:"#991B1B"} },
+  { id:"e33", from:"n4",  to:"n2",  label:"Heat stress\n-",          width:5, color:{color:"#991B1B"} },
+  { id:"e35", from:"n2",  to:"n3",  label:"Shades & retains\n+",     width:5, color:{color:"#1E40AF"} },
+];
+
+const SLIDES = [
+  {
+    type: "overview",
+    badge: { text:"Full Model", bg:"#334155", color:"#CBD5E1" },
+    accent: "#475569",
+    title: "Hydrological Processes & the Soil Carbon Sponge",
+    subtitle: "A Causal Loop Diagram",
+    heading: "The System in Full",
+    description: "<p>This causal loop diagram maps how soil organic matter and vegetation create the Earth's primary climate regulation system \u2014 the <strong>Soil Carbon Sponge</strong>. Seven feedback loops reveal how healthy land cools the planet through water cycling, cloud formation, and latent heat transfer.</p><p>Four virtuous cycles (R1\u2013R4) represent restoration potential. Two vicious cycles (R5\u2013R6) are the desertification trap. One balancing loop (B7) sets the natural water limit.</p><p>Navigate each loop and archetype using the arrows below, or press <strong>\u2190 \u2192</strong> on your keyboard.</p>",
+    activeNodeIds: null,
+    activeEdgeIds: null,
+  },
+  {
+    type: "r-loop",
+    badge: { text:"Reinforcing \u00b7 R1", bg:"#78350F", color:"#FDE68A" },
+    accent: "#F59E0B",
+    title: "R1: Soil Carbon Sponge Regeneration",
+    subtitle: "Reinforcing \u2014 Amplifying",
+    heading: "R1: Soil Carbon Sponge Regeneration",
+    description: "<p>The foundational virtuous cycle. More <strong>Soil Organic Matter</strong> creates better pore structure and water retention, which supports more plant growth and root biomass, which feeds more carbon back into the soil.</p><p>Once activated by regenerative practices, this loop is self-accelerating. At 10 tC/ha/yr sequestration across 2 billion hectares, this loop could reverse global atmospheric CO\u2082 accumulation (Jehne, 2019).</p>",
+    activeNodeIds: ["n1","n6","n3","n2","n7"],
+    activeEdgeIds: ["e1","e3","e5","e6","e7"],
+  },
+  {
+    type: "r-loop",
+    badge: { text:"Reinforcing \u00b7 R2", bg:"#78350F", color:"#FDE68A" },
+    accent: "#F59E0B",
+    title: "R2: The Transpiration Cooling Loop",
+    subtitle: "Reinforcing \u2014 Amplifying",
+    heading: "R2: The Transpiration Cooling Loop",
+    description: "<p>Soil moisture enables evapotranspiration, which transfers heat from the surface to the upper atmosphere as <strong>latent heat</strong>, cooling the surface and reducing heat stress on vegetation \u2014 maintaining cover and soil moisture.</p><p>Currently returning ~80 W/m\u00b2 globally. Tropical forests run 15\u00b0C cooler than adjacent cleared areas via this mechanism alone. <em>Without the soil sponge, cooling fails in dry seasons.</em></p>",
+    activeNodeIds: ["n3","n8","n9","n4","n2"],
+    activeEdgeIds: ["e8","e9","e10","e33","e35"],
+  },
+  {
+    type: "r-loop",
+    badge: { text:"Reinforcing \u00b7 R3", bg:"#78350F", color:"#FDE68A" },
+    accent: "#F59E0B",
+    title: "R3: The Biotic Pump",
+    subtitle: "Reinforcing \u2014 Amplifying",
+    heading: "R3: The Biotic Pump",
+    description: "<p>Healthy vegetation creates low-pressure atmospheric corridors (<strong>Biotic Pump</strong> \u2014 Makarieva, 2026) that draw moist oceanic air inland. This increases regional rainfall, which recharges the soil sponge, which sustains the vegetation.</p><p>The Amazon drives continental moisture transport thousands of kilometres inland via this mechanism. Degraded landscapes generate heat domes that break this loop by inverting the pressure gradient.</p>",
+    activeNodeIds: ["n2","n12","n13","n3"],
+    activeEdgeIds: ["e15","e16","e17","e5"],
+  },
+  {
+    type: "r-loop",
+    badge: { text:"Reinforcing \u00b7 R4", bg:"#78350F", color:"#FDE68A" },
+    accent: "#F59E0B",
+    title: "R4: Biological Nuclei and Cloud Cooling",
+    subtitle: "Reinforcing \u2014 Amplifying",
+    heading: "R4: Biological Nuclei & Cloud Cooling",
+    description: "<p>Vegetation releases hygroscopic bacteria that coalesce warm hazes into dense, high-albedo clouds \u2014 reflecting up to 70% of incident solar radiation back to space, cooling the surface, and maintaining the biological source of nuclei.</p><p><em>A 2% increase in global cloud reflectance would fully offset current abnormal warming</em> (Jehne, 2019). Loss of forests collapses this loop entirely.</p>",
+    activeNodeIds: ["n2","n10","n11","n4"],
+    activeEdgeIds: ["e11","e12","e13","e33"],
+  },
+  {
+    type: "r-loop",
+    badge: { text:"Reinforcing \u00b7 R5", bg:"#78350F", color:"#FDE68A" },
+    accent: "#F59E0B",
+    title: "R5: The Desertification Trap",
+    subtitle: "Reinforcing \u2014 Amplifying",
+    heading: "R5: The Desertification Trap",
+    description: "<p>A vicious reinforcing cycle. <strong>Land degradation</strong> removes vegetation, exposing soil to direct solar heating (60\u201370\u00b0C). Hot bare soil re-radiates exponentially more infrared heat (Stefan-Boltzmann Law, T\u2074), warming the atmosphere and driving further aridification and wildfires.</p><p>Regions can become <em>locked</em> in this degraded equilibrium for centuries. Heat domes reinforce the drought by blocking moisture inflow.</p>",
+    activeNodeIds: ["n5","n2","n14","n15","n4"],
+    activeEdgeIds: ["e21","e20","e18","e19","e26"],
+  },
+  {
+    type: "r-loop",
+    badge: { text:"Reinforcing \u00b7 R6", bg:"#78350F", color:"#FDE68A" },
+    accent: "#F59E0B",
+    title: "R6: The Haze Amplification Loop",
+    subtitle: "Reinforcing \u2014 Amplifying",
+    heading: "R6: The Haze Amplification Loop",
+    description: "<p>Bare eroded soils release dust aerosols (3\u20135 Gt/year) that form persistent <strong>humid hazes</strong>, absorbing solar and infrared radiation, warming the lower atmosphere by up to 60 W/m\u00b2. Warming drives further aridification and degradation, producing more dust.</p><p>Hazes also suppress rainfall by up to 30% (<em>'humid droughts'</em>) by preventing droplet coalescence into rain \u2014 reinforcing the vicious cycle.</p>",
+    activeNodeIds: ["n5","n17","n16","n4"],
+    activeEdgeIds: ["e23","e24","e25","e26"],
+  },
+  {
+    type: "b-loop",
+    badge: { text:"Balancing \u00b7 B7", bg:"#1E3A8A", color:"#BFDBFE" },
+    accent: "#60A5FA",
+    title: "B7: Soil Moisture\u2013ET Balance",
+    subtitle: "Balancing \u2014 Limiting",
+    heading: "B7: Soil Moisture\u2013ET Balance",
+    description: "<p>A stabilising feedback. Soil moisture enables evapotranspiration, but ET depletes the soil moisture store. As moisture decreases, ET is constrained \u2014 setting the natural limit to transpiration-based cooling.</p><p>This is the mechanism behind the <strong>Blue Water Trade-off</strong> (Mankin et al., 2018): in water-limited catchments, increased vegetation can increase ET demand faster than infiltration gains supply it, reducing streamflow.</p>",
+    activeNodeIds: ["n3","n8"],
+    activeEdgeIds: ["e8","e32"],
+  },
+  {
+    type: "archetype",
+    badge: { text:"Archetype 1", bg:"#4C1D95", color:"#DDD6FE" },
+    accent: "#A78BFA",
+    title: "Limits to Growth",
+    subtitle: "System Archetype",
+    heading: "Archetype: Limits to Growth",
+    description: "<p>The four virtuous cycles (R1\u2013R4) drive ecosystem recovery and cooling when soil moisture and vegetation are present. Their growth is limited by the degradation pressures (R5, R6). If atmospheric warming and land degradation proceed faster than the restoration loops can activate, the system stalls.</p><p>The critical intervention is rebuilding <strong>Soil Organic Matter</strong> (n1) first \u2014 without the sponge, vegetation cannot establish and restoration loops cannot fire. <em>Earthworks are often the necessary ignition.</em></p>",
+    activeNodeIds: ["n1","n2","n3","n4","n5","n8","n14"],
+    activeEdgeIds: ["e1","e3","e5","e7","e21","e22","e26","e18","e19","e20"],
+  },
+  {
+    type: "archetype",
+    badge: { text:"Archetype 2", bg:"#4C1D95", color:"#DDD6FE" },
+    accent: "#A78BFA",
+    title: "Tragedy of the Commons (Atmosphere)",
+    subtitle: "System Archetype",
+    heading: "Archetype: Tragedy of the Commons",
+    description: "<p>The atmosphere's heat-regulating capacity \u2014 <strong>Cloud Albedo</strong> (n11), <strong>Regional Moisture Convergence</strong> (n12), and freedom from hazes (n16) \u2014 is a shared commons. Each individual land degradation decision adds marginally to aerosol loading and warming for everyone.</p><p>Conversely, large-scale ecosystem restoration generates cloud albedo and biotic pump benefits that accrue globally. <em>This is a positive-sum commons restoration problem requiring coordinated action at bioregional and continental scales.</em></p>",
+    activeNodeIds: ["n5","n17","n16","n4","n11","n12","n10","n2"],
+    activeEdgeIds: ["e23","e24","e25","e26","e11","e12","e13","e15","e28"],
+  },
+  {
+    type: "overview",
+    badge: { text:"Full Model", bg:"#334155", color:"#CBD5E1" },
+    accent: "#475569",
+    title: "The Complete System",
+    subtitle: "Hydrological Processes & the Soil Carbon Sponge",
+    heading: "The Single Highest-Leverage Intervention",
+    description: "<p>The model reveals that atmospheric temperature is governed primarily by <strong>hydrological processes</strong>, not CO\u2082 alone. Water vapour operates at 50,000 ppmv; CO\u2082 at 420 ppmv. The highest-leverage entry point is <strong>Soil Organic Matter</strong> (n1) \u2014 the foundation that powers all four virtuous cooling cycles.</p><p><strong>Regenerative Land Practices</strong> (n20) is the single human lever that can activate R1 and break the desertification trap. At scale across 2 billion degraded hectares, this system has the physical capacity to reverse current atmospheric warming.</p><p><em>The atmosphere is not failing. It is responding precisely to what we have done to the land.</em></p>",
+    activeNodeIds: null,
+    activeEdgeIds: null,
+  },
+];
+// END_SLIDESHOW_DATA
+// END_SLIDESHOW_DATA
+
+// ─────────────────────────────────────────────
+//  DIM COLORS  (fixed — do not edit)
+// ─────────────────────────────────────────────
+const DIM_NODE = { background:"#E8EAED", border:"#CDD1D6" };
+const DIM_FONT = { color:"#C0C5CB" };
+const DIM_EDGE_COLOR = "#D1D5DB";
+
+// ─────────────────────────────────────────────
+//  VIS-NETWORK INIT  (fixed — do not edit)
+// ─────────────────────────────────────────────
+const nodeLabel = Object.fromEntries(nodesArray.map(n => [n.id, n.label.replace(/\n/g,' ')]));
+const nodeColor = Object.fromEntries(nodesArray.map(n => [n.id, n.color]));
+const edgeColorOrig = Object.fromEntries(edgesData.map(e => [e.id, e.color.color]));
+const edgeWidthOrig = Object.fromEntries(edgesData.map(e => [e.id, e.width || 2]));
+
+const nodes = new vis.DataSet(nodesArray.map(n => ({ ...n })));
+const edges = new vis.DataSet(edgesData.map(e => ({
+    ...e,
+    smooth: { enabled: true, type: "cubicBezier", roundness: 0.3 },
+    font: { align:'middle', size:11, face:'Inter,sans-serif', color:'#374151', background:'rgba(255,255,255,0.8)', strokeWidth:0 }
+})));
+
+const container = document.getElementById('network');
+const network = new vis.Network(container, { nodes, edges }, {
+    autoResize: true,
+    height: '100%', width: '100%',
+    nodes: {
+        shape: 'ellipse', size: 25,
+        font: { size:13, face:'Inter,sans-serif', color:'#1F2937', multi:'html' },
+        widthConstraint: { maximum: 160 },
+        borderWidth: 2,
+        shadow: { enabled: true, size:4, x:2, y:2, color:'rgba(0,0,0,0.08)' },
+    },
+    edges: {
+        width: 2.5,
+        arrows: { to: { enabled:true, scaleFactor:0.65, type:'arrow' } },
+    },
+    physics: { enabled: false },
+    interaction: {
+        hover: false, dragNodes: false, dragView: true, zoomView: true,
+        selectable: false, navigationButtons: false,
+    },
+    layout: { hierarchical: false },
+});
+
+// ─────────────────────────────────────────────
+//  SLIDE ENGINE  (fixed — do not edit)
+// ─────────────────────────────────────────────
+let currentIdx = 0;
+
+function buildDots() {
+    const container = document.getElementById('nav-dots');
+    container.innerHTML = '';
+    SLIDES.forEach((s, i) => {
+        const dot = document.createElement('div');
+        dot.className = 'nav-dot ' + s.type;
+        dot.title = s.title;
+        dot.addEventListener('click', () => goTo(i));
+        container.appendChild(dot);
+    });
+}
+
+function updateDots(idx) {
+    document.querySelectorAll('.nav-dot').forEach((d, i) => {
+        d.classList.toggle('active', i === idx);
+    });
+}
+
+function updateSlideUI(slide, idx) {
+    const badge = document.getElementById('slide-badge');
+    badge.textContent = slide.badge.text;
+    badge.style.background = slide.badge.bg;
+    badge.style.color = slide.badge.color;
+    document.getElementById('slide-title').textContent = slide.title;
+    document.getElementById('slide-subtitle').textContent = slide.subtitle;
+    document.getElementById('slide-counter').textContent = `${idx + 1} / ${SLIDES.length}`;
+
+    document.getElementById('panel-accent-bar').style.background = slide.accent;
+
+    const loopLabel = document.getElementById('panel-loop-label');
+    if (slide.type === 'r-loop') {
+        loopLabel.textContent = 'Reinforcing Loop — Amplifying';
+        loopLabel.style.color = '#F59E0B';
+    } else if (slide.type === 'b-loop') {
+        loopLabel.textContent = 'Balancing Loop — Limiting';
+        loopLabel.style.color = '#60A5FA';
+    } else if (slide.type === 'archetype') {
+        loopLabel.textContent = 'System Archetype';
+        loopLabel.style.color = '#A78BFA';
+    } else {
+        loopLabel.textContent = 'Causal Loop Diagram';
+        loopLabel.style.color = '#64748B';
+    }
+
+    document.getElementById('panel-heading').textContent = slide.heading;
+    document.getElementById('panel-description').innerHTML = slide.description;
+
+    const nodesSection = document.getElementById('panel-nodes');
+    const nodesList = document.getElementById('panel-nodes-list');
+    if (slide.activeNodeIds && slide.activeNodeIds.length > 0) {
+        nodesSection.style.display = 'block';
+        nodesList.innerHTML = slide.activeNodeIds.map(id => {
+            const bg = nodeColor[id]?.background || '#DBEAFE';
+            const label = nodeLabel[id] || id;
+            return `<span class="node-pill" style="background:${bg}">${label}</span>`;
+        }).join('');
+    } else {
+        nodesSection.style.display = 'none';
+    }
+
+    document.getElementById('btn-prev').disabled = idx === 0;
+    document.getElementById('btn-next').disabled = idx === SLIDES.length - 1;
+    document.getElementById('panel-content').scrollTop = 0;
+
+    updateDots(idx);
+}
+
+function updateNetworkHighlighting(slide) {
+    const activeN = slide.activeNodeIds;
+    const activeE = slide.activeEdgeIds;
+
+    const nodeUpdates = nodesArray.map(n => {
+        const active = activeN === null || activeN.includes(n.id);
+        return {
+            id: n.id,
+            color: active ? nodeColor[n.id] : DIM_NODE,
+            font: { size:13, face:'Inter,sans-serif', color: active ? '#1F2937' : DIM_FONT.color },
+            borderWidth: active ? 2 : 1,
+        };
+    });
+
+    const edgeUpdates = edgesData.map(e => {
+        const active = activeE === null || activeE.includes(e.id);
+        return {
+            id: e.id,
+            color: { color: active ? edgeColorOrig[e.id] : DIM_EDGE_COLOR },
+            width: active ? edgeWidthOrig[e.id] : 0.8,
+            font: {
+                align:'middle', size:11, face:'Inter,sans-serif',
+                color: active ? '#374151' : '#D1D5DB',
+                background: active ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0)',
+                strokeWidth:0,
+            },
+        };
+    });
+
+    nodes.update(nodeUpdates);
+    edges.update(edgeUpdates);
+}
+
+function fitCamera(slide, animate) {
+    const anim = animate ? { duration: 700, easingFunction: 'easeInOutQuad' } : false;
+    if (slide.activeNodeIds === null) {
+        network.fit({ animation: anim });
+    } else {
+        network.fit({ nodes: slide.activeNodeIds, animation: anim });
+    }
+}
+
+function goTo(idx, animate = true) {
+    if (idx < 0 || idx >= SLIDES.length) return;
+    currentIdx = idx;
+    const slide = SLIDES[idx];
+    updateSlideUI(slide, idx);
+    updateNetworkHighlighting(slide);
+    fitCamera(slide, animate);
+}
+
+// ─────────────────────────────────────────────
+//  BOOT & EVENTS  (fixed — do not edit)
+// ─────────────────────────────────────────────
+buildDots();
+setTimeout(() => goTo(0, false), 60);
+
+document.getElementById('btn-prev').addEventListener('click', () => goTo(currentIdx - 1));
+document.getElementById('btn-next').addEventListener('click', () => goTo(currentIdx + 1));
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')    goTo(currentIdx - 1);
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+        e.preventDefault();
+        goTo(currentIdx + 1);
+    }
+});
+
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive:true });
+document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) goTo(dx < 0 ? currentIdx + 1 : currentIdx - 1);
+});
+</script>
+</body>
+</html>
